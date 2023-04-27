@@ -33,6 +33,8 @@ class LaporanController extends Controller
         foreach ($produks as $key => $value) {
             $stokBeli = 0;
             $stokJual = 0;
+            $stokBeliLalu = 0;
+            $stokJualLalu = 0;
 
             $pembelian = DB::table('detail_pembelians')
                 ->join('pembelians', 'detail_pembelians.pembelian_id', 'pembelians.id')
@@ -71,8 +73,42 @@ class LaporanController extends Controller
 
             $value->pembelian = $stokBeli;
             $value->penjualan = $stokJual;
-            // $value->stok_bulanan = $stokBeli - $stokJual;
-            $value->stok_bulanan = $value->stok;
+
+            $firstBeli = DB::table('pembelians')
+                ->min('tanggal_beli');
+            $firstJual = DB::table('penjualans')
+                ->min('tanggal_jual');
+            $currDate = date(session('tahun') . "-$bulan-01");
+            $lastDate = date($currDate, strtotime('last day of -1 month'));
+
+            $pembelianLalu = DB::table('detail_pembelians')
+                ->join('pembelians', 'detail_pembelians.pembelian_id', 'pembelians.id')
+                ->where('produk_id', $value->id)
+                ->whereBetween('tanggal_beli', [$firstBeli, $lastDate])
+                ->get();
+
+            if (count($pembelianLalu) > 0) {
+                foreach ($pembelianLalu as $index => $val) {
+                    $stokBeliLalu += intval(preg_replace("/\D/", "", $val->ket));
+                }
+            }
+
+            $penjualanLalu = DB::table('detail_penjualans')
+                ->join('penjualans', 'detail_penjualans.penjualan_id', 'penjualans.id')
+                ->where('produk_id', $value->id)
+                ->whereBetween('tanggal_jual', [$firstJual, $lastDate])
+                ->get();
+
+
+            if (count($penjualanLalu) > 0) {
+                foreach ($penjualanLalu as $index => $val) {
+                    $stokJualLalu += intval(preg_replace("/\D/", "", $val->ket));
+                }
+            }
+
+            $value->stokAwal = $stokBeliLalu - $stokJualLalu;
+            $value->stok_bulanan = $value->stokAwal + ($stokBeli - $stokJual);
+            // $value->stok_bulanan = $value->stok;
             $value->harga = $value->stok_bulanan * $value->harga_perdos;
             $value->dpp = $value->harga / 1.1;
             $value->ppn = $value->harga - $value->dpp;
@@ -93,6 +129,8 @@ class LaporanController extends Controller
         $temp = [];
         $stokBeli = 0;
         $stokJual = 0;
+        $stokBeliLalu = 0;
+        $stokJualLalu = 0;
 
         $produks = DB::table('produks')->orderBy('nama_produk')->get();
 
@@ -137,8 +175,46 @@ class LaporanController extends Controller
 
             $value->pembelian = $stokBeli;
             $value->penjualan = $stokJual;
+
+
+            $firstBeli = DB::table('pembelians')
+                ->min('tanggal_beli');
+            $firstJual = DB::table('penjualans')
+                ->min('tanggal_jual');
+
+            $currDate = date(session('tahun') . "-$bulan-01");
+            $lastDate = date($currDate, strtotime('last day of -1 month'));
+
+            $pembelianLalu = DB::table('detail_pembelians')
+                ->join('pembelians', 'detail_pembelians.pembelian_id', 'pembelians.id')
+                ->where('produk_id', $value->id)
+                ->whereBetween('tanggal_beli', [$firstBeli, $lastDate])
+                ->get();
+
+            if (count($pembelianLalu) > 0) {
+                foreach ($pembelianLalu as $index => $val) {
+                    $stokBeliLalu += intval(preg_replace("/\D/", "", $val->ket));
+                }
+            }
+
+            $penjualanLalu = DB::table('detail_penjualans')
+                ->join('penjualans', 'detail_penjualans.penjualan_id', 'penjualans.id')
+                ->where('produk_id', $value->id)
+                ->whereBetween('tanggal_jual', [$firstJual, $lastDate])
+                ->get();
+
+
+            if (count($penjualanLalu) > 0) {
+                foreach ($penjualanLalu as $index => $val) {
+                    $stokJualLalu += intval(preg_replace("/\D/", "", $val->ket));
+                }
+            }
+
+            $value->stokAwal = $stokBeliLalu - $stokJualLalu;
+            $value->stok_bulanan = $value->stokAwal + ($stokBeli - $stokJual);
+
             // $value->stok_bulanan = $stokBeli - $stokJual;
-            $value->stok_bulanan = $value->stok;
+            // $value->stok_bulanan = $value->stok;
             $value->harga = $value->stok_bulanan * $value->harga_perdos;
             $value->dpp = $value->harga / 1.1;
             $value->ppn = $value->harga - $value->dpp;
@@ -189,7 +265,7 @@ class LaporanController extends Controller
         $tahun = ""  . session('tahun') . "-" . $bulan . "";
         $periode = ($bulan != 'all') ? strtoupper(strftime('%B %Y', mktime(0, 0, 0, $bulan + 1, 0, (int)session('tahun')))) : (int)session('tahun');
 
-        $sheet->setCellValue('A1', 'LAPORAN REKAPITULASI STOK BARANG')->mergeCells('A1:I1');
+        $sheet->setCellValue('A1', 'LAPORAN REKAPITULASI STOK BARANG')->mergeCells('A1:J1');
         $sheet->setCellValue('A2', 'CV. AYYUB TANI')->mergeCells('A2:I2');
         $sheet->setCellValue('A3', "PERIODE $periode")->mergeCells('A3:I3');
 
@@ -203,21 +279,23 @@ class LaporanController extends Controller
         $sheet->getColumnDimension('D')->setWidth(13);
         $sheet->setCellValue('E5', 'Penjualan');
         $sheet->getColumnDimension('E')->setWidth(13);
-        $sheet->setCellValue('F5', 'Stok');
+        $sheet->setCellValue('F5', 'Stok Awal');
         $sheet->getColumnDimension('F')->setWidth(8);
-        $sheet->setCellValue('G5', 'Harga');
-        $sheet->getColumnDimension('G')->setWidth(16);
-        $sheet->setCellValue('H5', 'DPP');
+        $sheet->setCellValue('G5', 'Stok Akhir');
+        $sheet->getColumnDimension('F')->setWidth(8);
+        $sheet->setCellValue('H5', 'Harga');
         $sheet->getColumnDimension('H')->setWidth(16);
-        $sheet->setCellValue('I5', 'PPN');
+        $sheet->setCellValue('I5', 'DPP');
         $sheet->getColumnDimension('I')->setWidth(16);
+        $sheet->setCellValue('J5', 'PPN');
+        $sheet->getColumnDimension('J')->setWidth(16);
 
         $cell = 5;
 
         $sheet->getStyle('A1:A3')->getFont()->setSize(12);
-        $sheet->getStyle('A:I')->getAlignment()->setWrapText(true);
-        $sheet->getStyle('A5:I5')->getFont()->setBold(true);
-        $sheet->getStyle('A5:I5')->getAlignment()->setVertical('center')->setHorizontal('center');
+        $sheet->getStyle('A:J')->getAlignment()->setWrapText(true);
+        $sheet->getStyle('A5:J5')->getFont()->setBold(true);
+        $sheet->getStyle('A5:J5')->getAlignment()->setVertical('center')->setHorizontal('center');
         $sheet->getStyle('A5:A' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center')->setHorizontal('center');
         $sheet->getStyle('B5:B' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center');
         $sheet->getStyle('B5:B' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center');
@@ -225,15 +303,16 @@ class LaporanController extends Controller
         $sheet->getStyle('D5:D' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center')->setHorizontal('center');
         $sheet->getStyle('E5:E' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center')->setHorizontal('center');
         $sheet->getStyle('F5:F' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center')->setHorizontal('center');
-        $sheet->getStyle('G5:G5')->getAlignment()->setVertical('center')->setHorizontal('center');
-        $sheet->getStyle('G6:G' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center')->setHorizontal('right');
-        $sheet->getStyle('G6:G' . (count($data['produks']) + $cell))->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle('G5:G' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center')->setHorizontal('center');
         $sheet->getStyle('H5:H5')->getAlignment()->setVertical('center')->setHorizontal('center');
         $sheet->getStyle('H6:H' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center')->setHorizontal('right');
         $sheet->getStyle('H6:H' . (count($data['produks']) + $cell))->getNumberFormat()->setFormatCode('#,##0');
         $sheet->getStyle('I5:I5')->getAlignment()->setVertical('center')->setHorizontal('center');
         $sheet->getStyle('I6:I' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center')->setHorizontal('right');
         $sheet->getStyle('I6:I' . (count($data['produks']) + $cell))->getNumberFormat()->setFormatCode('#,##0');
+        $sheet->getStyle('I5:J5')->getAlignment()->setVertical('center')->setHorizontal('center');
+        $sheet->getStyle('I6:J' . (count($data['produks']) + $cell))->getAlignment()->setVertical('center')->setHorizontal('right');
+        $sheet->getStyle('I6:J' . (count($data['produks']) + $cell))->getNumberFormat()->setFormatCode('#,##0');
         $sheet->getStyle('A1:A3')->getAlignment()->setVertical('center')->setHorizontal('center');
 
 
@@ -247,11 +326,12 @@ class LaporanController extends Controller
             $sheet->setCellValue('C' . $cell, strtoupper($value->kemasan));
             $sheet->setCellValue('D' . $cell, $value->pembelian);
             $sheet->setCellValue('E' . $cell, $value->penjualan);
-            $sheet->setCellValue('F' . $cell, $value->stok_bulanan);
+            $sheet->setCellValue('F' . $cell, $value->stokAwal);
+            $sheet->setCellValue('G' . $cell, $value->stok_bulanan);
             // $sheet->setCellValue('G' . $cell, number_format($value->harga));
-            $sheet->setCellValue('G' . $cell, $value->harga);
-            $sheet->setCellValue('H' . $cell, $value->dpp);
-            $sheet->setCellValue('I' . $cell, $value->ppn);
+            $sheet->setCellValue('H' . $cell, $value->harga);
+            $sheet->setCellValue('I' . $cell, $value->dpp);
+            $sheet->setCellValue('J' . $cell, $value->ppn);
         }
 
         $border = [
@@ -263,7 +343,7 @@ class LaporanController extends Controller
             ],
         ];
 
-        $sheet->getStyle('A5:I' . $cell)->applyFromArray($border);
+        $sheet->getStyle('A5:J' . $cell)->applyFromArray($border);
 
         if ($jenis == 'excel') {
             // Untuk download 

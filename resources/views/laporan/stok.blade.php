@@ -37,6 +37,7 @@
                                         {{-- <th>Isi Perdos</th> --}}
                                         {{-- <th>Satuan</th> --}}
                                         {{-- <th>Harga Beli</th> --}}
+                                        <th>Stok Awal</th>
                                         <th>Pembelian</th>
                                         <th>Penjualan</th>
                                         <th>Stok</th>
@@ -107,6 +108,12 @@
                         //         return formatRupiah(data.toString(), '');
                         //     }
                         // },
+                        {
+                            data: 'stokAwal',
+                            render: function(data, type, row) {
+                                return `${data} Dos`;
+                            }
+                        },
                         {
                             data: 'pembelian',
                             render: function(data, type, row) {
