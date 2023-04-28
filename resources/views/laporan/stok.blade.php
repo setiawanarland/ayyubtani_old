@@ -11,7 +11,7 @@
                         <div class="form-row align-items-center">
                             <div class="col-sm-4">
                                 <select class="form-control" id="bulan" name="bulan">
-                                    <option value="all">SEMUA BULAN</option>
+                                    {{-- <option value="all">SEMUA BULAN</option> --}}
                                     @php
                                         $bulan = [1 => 'Januari', 'Febuari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                                     @endphp
@@ -61,7 +61,8 @@
 
 @section('scripts')
     <script>
-        var bulan = $('#bulan').val();
+        // var bulan = $('#bulan').val();
+        var bulan = 1;
         console.log(bulan);
         // datatable produk list
         var dataRow = function() {

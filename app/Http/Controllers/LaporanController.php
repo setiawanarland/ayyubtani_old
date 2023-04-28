@@ -78,8 +78,10 @@ class LaporanController extends Controller
                 ->min('tanggal_beli');
             $firstJual = DB::table('penjualans')
                 ->min('tanggal_jual');
-            $currDate = date(session('tahun') . "-$bulan-01");
+            $currDate = ($bulan == 'all') ? date(session('tahun') + 1 . "-m-d", strtotime('01/01')) : date(session('tahun') . "-$bulan-01");
             $lastDate = date($currDate, strtotime('last day of -1 month'));
+            // return $currDate;
+            // return $lastDate;
 
             $pembelianLalu = DB::table('detail_pembelians')
                 ->join('pembelians', 'detail_pembelians.pembelian_id', 'pembelians.id')
@@ -113,9 +115,10 @@ class LaporanController extends Controller
             $value->dpp = $value->harga / 1.1;
             $value->ppn = $value->harga - $value->dpp;
 
-            if ($stokBeli !== 0 || $stokJual !== 0) {
-                $data[] = $value;
-            }
+            $data[] = $value;
+            // if ($stokBeli !== 0 || $stokJual !== 0) {
+            //     $data[] = $value;
+            // }
         }
 
         return (new GeneralResponse)->default_json(true, 'success', $data, 200);
@@ -137,6 +140,8 @@ class LaporanController extends Controller
         foreach ($produks as $key => $value) {
             $stokBeli = 0;
             $stokJual = 0;
+            $stokBeliLalu = 0;
+            $stokJualLalu = 0;
 
             $pembelian = DB::table('detail_pembelians')
                 ->join('pembelians', 'detail_pembelians.pembelian_id', 'pembelians.id')
@@ -219,9 +224,10 @@ class LaporanController extends Controller
             $value->dpp = $value->harga / 1.1;
             $value->ppn = $value->harga - $value->dpp;
 
-            if ($stokBeli !== 0 || $stokJual !== 0) {
-                $temp[] = $value;
-            }
+            $temp[] = $value;
+            // if ($stokBeli !== 0 || $stokJual !== 0) {
+            //     $temp[] = $value;
+            // }
         }
 
         $data['bulan'] = $bulan;
@@ -275,12 +281,12 @@ class LaporanController extends Controller
         $sheet->getColumnDimension('B')->setWidth(30);
         $sheet->setCellValue('C5', 'Kemasan');
         $sheet->getColumnDimension('C')->setWidth(25);
-        $sheet->setCellValue('D5', 'Pembelian');
-        $sheet->getColumnDimension('D')->setWidth(13);
-        $sheet->setCellValue('E5', 'Penjualan');
+        $sheet->setCellValue('D5', 'Stok Awal');
+        $sheet->getColumnDimension('D')->setWidth(8);
+        $sheet->setCellValue('E5', 'Pembelian');
         $sheet->getColumnDimension('E')->setWidth(13);
-        $sheet->setCellValue('F5', 'Stok Awal');
-        $sheet->getColumnDimension('F')->setWidth(8);
+        $sheet->setCellValue('F5', 'Penjualan');
+        $sheet->getColumnDimension('F')->setWidth(13);
         $sheet->setCellValue('G5', 'Stok Akhir');
         $sheet->getColumnDimension('F')->setWidth(8);
         $sheet->setCellValue('H5', 'Harga');
@@ -324,9 +330,9 @@ class LaporanController extends Controller
             $sheet->setCellValue('A' . $cell, $index + 1);
             $sheet->setCellValue('B' . $cell, strtoupper($value->nama_produk));
             $sheet->setCellValue('C' . $cell, strtoupper($value->kemasan));
-            $sheet->setCellValue('D' . $cell, $value->pembelian);
-            $sheet->setCellValue('E' . $cell, $value->penjualan);
-            $sheet->setCellValue('F' . $cell, $value->stokAwal);
+            $sheet->setCellValue('D' . $cell, $value->stokAwal);
+            $sheet->setCellValue('E' . $cell, $value->pembelian);
+            $sheet->setCellValue('F' . $cell, $value->penjualan);
             $sheet->setCellValue('G' . $cell, $value->stok_bulanan);
             // $sheet->setCellValue('G' . $cell, number_format($value->harga));
             $sheet->setCellValue('H' . $cell, $value->harga);
